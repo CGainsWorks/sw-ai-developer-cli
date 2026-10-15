@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['20', '22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      # The git integration test drives a real repository. Without an identity
+      # `git commit` fails on a fresh runner, and the suite would skip the one
+      # test that proves the parser handles real git output.
+      - name: Configure git identity
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@example.com"
+          git config --global init.defaultBranch main
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test with coverage
+        run: npm run coverage
+
+      - name: Build
+        run: npm run build
+
+      # Proves the packaged CLI actually runs on this OS, and that every
+      # documented exit code is what the demo asserts.
+      - name: Run the offline demo
+        run: npm run demo
+
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+
+  package:
+    name: Package check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # `npm pack` runs prepack, so this catches a build that only works
+      # in-tree, and a `files` list that omits something the CLI needs.
+      - name: Pack the tarball
+        run: npm pack
+
+      - name: Install the tarball into a clean directory and run it
+        run: |
+          mkdir -p /tmp/install-check
+          cd /tmp/install-check
+          npm init -y > /dev/null
+          npm install "$GITHUB_WORKSPACE"/sw-ai-developer-cli-*.tgz
+          ./node_modules/.bin/swai --version
+          ./node_modules/.bin/swai plugins
+          # Templates must ship in the package, or every command fails at runtime.
+          ./node_modules/.bin/swai review --help

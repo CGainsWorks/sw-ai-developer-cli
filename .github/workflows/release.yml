@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: semantic-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the tag, the release and the changelog commit
+      issues: write
+      pull-requests: write
+      id-token: write # npm provenance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # semantic-release reads the full history to work out the next version.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # Publishing is opt-in. Without a token this is a repository that simply
+      # has not been set up to release yet, which is not a failure — a workflow
+      # that goes permanently red for an expected state trains people to ignore
+      # it.
+      - name: Check for an npm token
+        id: npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NPM_TOKEN" ]; then
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo '::notice::NPM_TOKEN is not set, so no release was attempted. Add it under Settings > Secrets and variables > Actions to enable publishing.'
+          else
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.npm.outputs.configured == 'true'
+        run: npm ci
+
+      # Release only what CI would have passed. semantic-release publishes
+      # irreversibly, so the gates run again here rather than being trusted
+      # from a parallel job.
+      - if: steps.npm.outputs.configured == 'true'
+        run: npm run typecheck
+      - if: steps.npm.outputs.configured == 'true'
+        run: npm run coverage
+      - if: steps.npm.outputs.configured == 'true'
+        run: npm run build
+
+      - name: Release
+        if: steps.npm.outputs.configured == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: npx semantic-release

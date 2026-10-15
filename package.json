@@ -1,0 +1,82 @@
+{
+  "name": "sw-ai-developer-cli",
+  "version": "0.0.0-development",
+  "description": "An extensible CLI that generates, reviews and explains code using OpenAI or any OpenAI-compatible model (Ollama, vLLM, LM Studio), with a documented plugin API, streaming output and CI-friendly exit codes.",
+  "type": "module",
+  "license": "MIT",
+  "author": "CGainsWorks",
+  "bin": {
+    "swai": "bin/swai.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugins/api.d.ts",
+      "import": "./dist/plugins/api.js"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates",
+    "docs/PLUGIN_GUIDE.md",
+    "docs/prompt_design.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "demo": "node scripts/run_demo.mjs",
+    "numbers": "node scripts/report_numbers.mjs",
+    "prepack": "npm run clean && npm run build"
+  },
+  "dependencies": {
+    "openai": "^4.104.0"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "^2.1.9",
+    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "semantic-release": "^24.2.1",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "code-review",
+    "codegen",
+    "openai",
+    "openai-compatible",
+    "ollama",
+    "vllm",
+    "local-llm",
+    "plugin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CGainsWorks/sw-ai-developer-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CGainsWorks/sw-ai-developer-cli/issues"
+  },
+  "homepage": "https://github.com/CGainsWorks/sw-ai-developer-cli#readme"
+}

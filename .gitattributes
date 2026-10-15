@@ -1,0 +1,31 @@
+# Normalise line endings so the Windows CI leg sees the same bytes as Linux.
+* text=auto eol=lf
+
+*.ts   text eol=lf
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.sh   text eol=lf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Fixtures whose exact bytes matter to the diff/patch tests.
+tests/fixtures/**/*.patch -text
+tests/fixtures/**/*.diff  -text
+
+# Binary types that must never be diffed or LFS-tracked into history.
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary
+
+# Git LFS: this project ships no weights, bags or media. The rules are
+# declared so that if any are ever added they go to LFS rather than history.
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+*.ckpt        filter=lfs diff=lfs merge=lfs -text
+*.pt          filter=lfs diff=lfs merge=lfs -text
+*.onnx        filter=lfs diff=lfs merge=lfs -text
+*.bag         filter=lfs diff=lfs merge=lfs -text
+*.mp4         filter=lfs diff=lfs merge=lfs -text
