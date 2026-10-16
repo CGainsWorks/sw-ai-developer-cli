@@ -1,8 +1,8 @@
 # Convenience targets. Everything here is a thin wrapper over an npm script,
-# so `make` is never required — it is just shorter to type.
+# so `make` is never required. It is just shorter to type.
 
 .DEFAULT_GOAL := help
-.PHONY: help setup build test coverage typecheck demo check clean release-dry
+.PHONY: help setup build test coverage typecheck demo smoke-compat check clean release-dry
 
 help: ## Show the available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -26,7 +26,10 @@ coverage: ## Run the tests with coverage, enforcing the thresholds
 demo: build ## Run the offline end-to-end demo (no API key needed)
 	npm run demo
 
-check: typecheck coverage build demo ## Everything CI runs, in the same order
+smoke-compat: build ## Run the built CLI against the mock OpenAI-compatible server
+	npm run smoke:compat
+
+check: typecheck coverage build demo smoke-compat ## Everything CI runs, in the same order
 
 clean: ## Remove build output and coverage
 	npm run clean

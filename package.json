@@ -40,6 +40,7 @@
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "demo": "node scripts/run_demo.mjs",
+    "smoke:compat": "node scripts/compat_smoke.mjs",
     "numbers": "node scripts/report_numbers.mjs",
     "prepack": "npm run clean && npm run build"
   },

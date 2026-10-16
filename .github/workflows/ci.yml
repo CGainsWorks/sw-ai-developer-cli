@@ -17,6 +17,7 @@ jobs:
   test:
     name: ${{ matrix.os }} / node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -56,6 +57,11 @@ jobs:
       - name: Run the offline demo
         run: npm run demo
 
+      # The built CLI as a separate process against a mock OpenAI-compatible
+      # server (tests/mock-openai/server.mjs): real SDK, real HTTP, no model.
+      - name: Exercise the compat provider against the mock server
+        run: npm run smoke:compat
+
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.node == '22'
         uses: actions/upload-artifact@v4
@@ -65,8 +71,9 @@ jobs:
           retention-days: 14
 
   package:
-    name: Package check
+    name: Install check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,20 +81,23 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - run: npm ci
-
-      # `npm pack` runs prepack, so this catches a build that only works
-      # in-tree, and a `files` list that omits something the CLI needs.
-      - name: Pack the tarball
-        run: npm pack
-
-      - name: Install the tarball into a clean directory and run it
+      # The README's install instructions, step for step: the package is not
+      # on npm, so it is built from a clone and installed globally from the
+      # packed tarball. `npm pack` runs prepack, so this also catches a build
+      # that only works in-tree and a `files` list that omits something.
+      - name: Install globally as the README describes
         run: |
-          mkdir -p /tmp/install-check
-          cd /tmp/install-check
-          npm init -y > /dev/null
-          npm install "$GITHUB_WORKSPACE"/sw-ai-developer-cli-*.tgz
-          ./node_modules/.bin/swai --version
-          ./node_modules/.bin/swai plugins
+          npm ci
+          npm pack
+          npm install -g --prefix "$RUNNER_TEMP/npm-global" ./sw-ai-developer-cli-*.tgz
+          echo "$RUNNER_TEMP/npm-global/bin" >> "$GITHUB_PATH"
+
+      - name: Run the installed CLI from a clean directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/clean" && cd "$RUNNER_TEMP/clean"
+          command -v swai
+          swai --version
+          swai plugins
           # Templates must ship in the package, or every command fails at runtime.
-          ./node_modules/.bin/swai review --help
+          swai review --help
+          node "$GITHUB_WORKSPACE/scripts/compat_smoke.mjs" swai
